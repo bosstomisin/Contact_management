@@ -36,7 +36,7 @@ namespace sq007.Controllers
             if (getByEmail == null)
                 return BadRequest();
 
-            string[] roles = { "Admin" };
+            string[] roles = { "Admin" , "User" };
             var token = UtilityClass.GenerateToken(getByEmail.UserName, getByEmail.Id, getByEmail.Email, _config, roles);
             return Ok(token);
 

@@ -23,12 +23,13 @@ namespace sq007.Controllers
     {
         private readonly Cloudinary _cloudinary;
         private readonly UserManager<Contact> _userManager;
-       
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IContactRepository _contactRepo;
 
-        public UserController(IConfiguration config, IContactRepository contactRepo, UserManager<Contact> usermanager)
+        public UserController(IConfiguration config, IContactRepository contactRepo, RoleManager<IdentityRole> roleManager, UserManager<Contact> usermanager)
         {
             _userManager = usermanager;
+            _roleManager = roleManager;
             
             _contactRepo = contactRepo;
             Account account = new Account
@@ -69,27 +70,28 @@ namespace sq007.Controllers
 
 
 
-        //[HttpPost]
-        //[Route("mkadmin/{id}")]
-        //public async Task<IActionResult> MakeAdmin(string id)
-        //{
-        //    var exist = await _userManager.FindByIdAsync(id);
-        //    if (exist == null)
-        //    {
-        //        return NotFound("User does not exist");
-        //    }
-        //    if (await _roleManager.FindByNameAsync("Admin") == null)
-        //    {
-        //        await _roleManager.CreateAsync(new IdentityRole("Admin"));
-        //    }
-        //    var attempt = await _userManager.AddToRoleAsync(exist, "Admin");
-        //    if (!attempt.Succeeded)
-        //        return StatusCode(500, "Attempt not successful");
-        //    return Ok("Registration successful");
-        //}
+        [HttpPost]
+        [Route("mkadmin/{id}")]
+        [Authorize(AuthenticationSchemes = "Bearer" , Roles ="Admin")]
+        public async Task<IActionResult> MakeAdmin(string id)
+        {
+            var exist = await _userManager.FindByIdAsync(id);
+            if (exist == null)
+            {
+                return NotFound("User does not exist");
+            }
+            if (await _roleManager.FindByNameAsync("Admin") == null)
+            {
+                await _roleManager.CreateAsync(new IdentityRole("Admin"));
+            }
+            var attempt = await _userManager.AddToRoleAsync(exist, "Admin");
+            if (!attempt.Succeeded)
+                return StatusCode(500, "Attempt not successful");
+            return Ok("Registration successful");
+        }
 
 
-        [Authorize(AuthenticationSchemes = "Bearer")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpGet("all-users")]
 
         public async Task<IEnumerable<ContactDto>> GetAllUsers()
@@ -112,7 +114,7 @@ namespace sq007.Controllers
         }
 
 
-        
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult> AddUser([FromBody] ContactDto contact)
         {
@@ -121,7 +123,7 @@ namespace sq007.Controllers
         }
 
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpPut("update/{id}")]
         public async Task<ActionResult> UpdateUser(string id, [FromBody] Contact contact)
         {
@@ -135,7 +137,7 @@ namespace sq007.Controllers
 
 
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public async Task<ActionResult> DeleteUser(string id)
         {
