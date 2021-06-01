@@ -21,6 +21,42 @@ namespace sq007.Data
            
             _userManager = userManager;
         }
+
+        /// <summary>
+        /// get contact
+        /// </summary>
+        /// <param name="searchTerm"></param>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public async Task<IEnumerable<ContactDto>> GetBySearchTerm(string searchTerm, PaginationFilter filter)
+        {
+            var validPageFilter = new PaginationFilter(filter.CurrentPage);
+            List<ContactDto> contactsToGet = new List<ContactDto>();
+            var contacts = await _db.Contacts.Where(t => t.Email.Contains(searchTerm) ||
+
+                                                    t.FirstName.Contains(searchTerm) ||
+                                                    t.LastName.Contains(searchTerm) 
+                                                    
+                                                    ).Include(a => a.Address)
+                                                     .Skip((validPageFilter.CurrentPage - 1) * 4)
+                                                    .Take(4).ToListAsync();
+            var num = contacts.Count();
+            for (int i = 0; i < num; i++)
+            {
+                ContactDto contactDto = new ContactDto();
+                contactDto.Id = contacts[i].Id;
+                contactDto.FirstName = contacts[i].FirstName;
+                contactDto.LastName = contacts[i].LastName;
+                contactDto.PhoneNumber = contacts[i].PhoneNumber;
+                contactDto.Email = contacts[i].Email;
+                contactDto.Address = contacts[i].Address;
+                contactDto.PhotoUrl = contacts[i].PhotoUrl ;
+                contactsToGet.Add(contactDto);
+            }
+            return contactsToGet;
+        }
+
+
         public async Task<Contact> Create(ContactDto contact)
         {
 
@@ -38,9 +74,6 @@ namespace sq007.Data
 
             };
 
-            contact1.Address = contact.Address;
-
-            //await _userManager.CreateAsync(contact1,"password@123");
             _db.Add(contact1);
             await _db.SaveChangesAsync();
 
@@ -50,11 +83,6 @@ namespace sq007.Data
 
         public async Task Delete(string id)
         {
-            //var user = await _userManager.FindByIdAsync(id);
-            //if (user != null)
-            //    await _userManager.DeleteAsync(user);
-
-
             var deleteUser = await _db.Contacts.Where(x => x.Id == id).Include(x => x.Address).FirstOrDefaultAsync();
             var deleteAddress = await _db.Addresses.Where(x => x.Id == Convert.ToString(id)).FirstOrDefaultAsync();
              _db.Contacts.Remove(deleteUser);
@@ -62,9 +90,12 @@ namespace sq007.Data
             await _db.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<ContactDto>> Get()
+        public async Task<IEnumerable<ContactDto>> Get([FromQuery] PaginationFilter filter)
         {
-             var getContact = await _db.Contacts.Include(x => x.Address).ToListAsync();
+            var paginationFilter = new PaginationFilter(filter.CurrentPage);
+             var getContact = await _db.Contacts.Include(x => x.Address)
+                .Skip((paginationFilter.CurrentPage -1 ) * 3)
+                .Take(3).ToListAsync();
             
             List<ContactDto> newContact = new List<ContactDto>();
             foreach (var contact in getContact)
@@ -118,17 +149,24 @@ namespace sq007.Data
             return contactdto;
         }
 
-        public async Task Update(Contact user)
+        public async Task Update(ContactDto user)
         {
-            //var getByid = await _db.Contacts.Where(x => x.Id == user.Id).Include(a => a.Address).FirstOrDefaultAsync();
-            //getByid.FirstName = user.FirstName;
-            //getByid.LastName = user.LastName;
-            //getByid.Email = user.Email;
-            //getByid.PhotoUrl = user.PhotoUrl;
+            var getByid = await _db.Contacts.Where(x => x.Id == user.Id).Include(a => a.Address).FirstOrDefaultAsync();
+            var address = await _db.Addresses.Where(x => x.Id == user.Id).FirstOrDefaultAsync();
+            getByid.FirstName = user.FirstName;
+            getByid.LastName = user.LastName;
+            getByid.Email = user.Email;
+            getByid.PhotoUrl = user.PhotoUrl;
             //getByid.Id = user.Id;
-            //getByid.Address = user.Address;
-            //getByid.PhoneNumber = user.PhoneNumber;
-            //_db.Update(getByid);
+            address.City = user.Address.City;
+            getByid.PhoneNumber = user.PhoneNumber;
+            _db.Update(getByid);
+            _db.Update(address);
+            await _db.SaveChangesAsync();
+
+
+
+
             ////_db.Entry(getByid).State = EntityState.Modified;
             //await _db.SaveChangesAsync();
 
@@ -141,8 +179,8 @@ namespace sq007.Data
             //    PhotoUrl = user.PhotoUrl,
             //    Address = user.Address
             //};
-            _db.Entry(user).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
+            //_db.Entry(user).State = EntityState.Modified;
+            //await _db.SaveChangesAsync();
         }
 
 

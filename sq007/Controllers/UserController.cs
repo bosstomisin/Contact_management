@@ -36,7 +36,7 @@ namespace sq007.Controllers
             {
                 Cloud = config.GetSection("CloudinarySettings:CloudName").Value,
                 ApiKey = config.GetSection("CloudinarySettings:ApiKey").Value,
-                ApiSecret = config.GetSection("CloudinarySettings:ApiSecret").Value,
+                ApiSecret = config.GetSection("CloudinarySet                                                                                                                                                    tings:ApiSecret").Value,
             };
             _cloudinary = new Cloudinary(account);
         }
@@ -93,10 +93,9 @@ namespace sq007.Controllers
 
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpGet("all-users")]
-
-        public async Task<IEnumerable<ContactDto>> GetAllUsers()
+        public async Task<IEnumerable<ContactDto>> GetAllUsers([FromQuery] PaginationFilter filter)
         {
-            return await _contactRepo.Get();
+            return await _contactRepo.Get(filter);
         }
        
         [HttpGet("Id/{id}")]
@@ -106,8 +105,8 @@ namespace sq007.Controllers
             return await _contactRepo.GetById(id);
         }
 
-
-        [HttpGet("/Email{email}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        [HttpGet("Email{email}")]
         public async Task<ActionResult<ContactDto>> GetUserEmail(string email)
         {
             return await _contactRepo.GetByEmail(email);
@@ -116,7 +115,7 @@ namespace sq007.Controllers
 
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult> AddUser([FromBody] ContactDto contact)
+        public async Task<ActionResult> AddUser([FromForm] ContactDto contact)
         {
             var addUser = await _contactRepo.Create(contact);
             return CreatedAtAction(nameof(GetAllUsers), new { id = addUser.Id }, addUser);
@@ -125,7 +124,7 @@ namespace sq007.Controllers
 
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         [HttpPut("update/{id}")]
-        public async Task<ActionResult> UpdateUser(string id, [FromBody] Contact contact)
+        public async Task<ActionResult> UpdateUser(string id, [FromBody] ContactDto contact)
         {
             if (id != contact.Id)
             {
@@ -150,13 +149,31 @@ namespace sq007.Controllers
             return Content("Contact Successfully Deleted");
         }
 
+
+        [Authorize(AuthenticationSchemes = "Bearer")]
         [HttpPatch("photo/id")]
-        public async Task<ActionResult> UpdatePhoto(string id, [FromBody] EditPhotoDto contact)
+        public async Task<ActionResult> UpdatePhoto(string id, [FromForm] EditPhotoDto contact)
         {
             await _contactRepo.UpdatePhoto(contact);
             return Content("Profile Successfully Updated");
         }
 
 
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+        [HttpGet("search")]
+        public async Task<ActionResult<IEnumerable<ContactDto>>> GetContactsBySearch([FromQuery] string searchTerm, [FromQuery] PaginationFilter filter)
+        {
+            var users = await _contactRepo.GetBySearchTerm(searchTerm, filter);
+            if (users.Count() <= 0)
+            {
+                return Content("No user with said search term exists");
+            }
+            else
+            {
+                return Ok(users);
+            }
+
+
+        }
     }
 }

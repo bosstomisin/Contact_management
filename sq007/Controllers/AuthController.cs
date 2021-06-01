@@ -20,23 +20,25 @@ namespace sq007.Controllers
         private readonly SignInManager<Contact> _signinManager;
         private readonly UserManager<Contact> _userManager;
         private readonly DataContext _db;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
-        public AuthController(IConfiguration config, SignInManager<Contact> signInManager, UserManager<Contact> userManager, DataContext  dataContext)
+        public AuthController(IConfiguration config, RoleManager<IdentityRole> roleManager, SignInManager<Contact> signInManager, UserManager<Contact> userManager, DataContext  dataContext)
         {
             _config = config;
             _signinManager = signInManager;
             _userManager = userManager;
             _db = dataContext;
+            _roleManager = roleManager;
         }
         [HttpPost("login")]
-         public async Task<IActionResult> Login([FromBody] LoginDto model)
+         public async Task<IActionResult> Login([FromForm] LoginDto model)
          {
             // a var user = await _userManager.FindByEmailAsync(model.Email);
             var getByEmail = await _db.Contacts.Where(x => x.Email == model.Email).Include(a => a.Address).FirstOrDefaultAsync();
             if (getByEmail == null)
                 return BadRequest();
-
-            string[] roles = { "Admin" , "User" };
+            
+            string[] roles = { "Admin"  };
             var token = UtilityClass.GenerateToken(getByEmail.UserName, getByEmail.Id, getByEmail.Email, _config, roles);
             return Ok(token);
 
